@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Ready-to-Ride Concept Dashboard</title>
+<style>
+:root{
+  --bg:#F6F6F4; --surface:#FFFFFF; --elev:#FFFFFF;
+  --text:#111111; --muted:#5C5C5C; --border:#E5E5E5;
+  --ok:#2F8F68; --warn:#C88A25; --bad:#C64C4C;
+  --chart-grid:#E5E5E5; --bar:#111111; --bar2:#8A8A8A; --bar3:#C9C9C9;
+  --focus:#111111;
+  --shadow:0 1px 3px rgba(0,0,0,.06);
+}
+:root[data-theme="dark"]{
+  --bg:#101010; --surface:#1A1A1A; --elev:#232323;
+  --text:#F5F5F5; --muted:#A3A3A3; --border:#303030;
+  --chart-grid:#303030; --bar:#F5F5F5; --bar2:#9A9A9A; --bar3:#555555;
+  --focus:#F5F5F5; --shadow:0 1px 3px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{transition:none!important;animation:none!important} }
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--text)}
+button{font:inherit;cursor:pointer;color:var(--text);background:none;border:none}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:19px;margin:0 0 6px;letter-spacing:-.01em}
+h3{font-size:15px;margin:0 0 6px}
+p.sub{color:var(--muted);margin:0 0 18px;max-width:72ch}
+.small{font-size:13px}.muted{color:var(--muted)}
+
+/* ---------- layout ---------- */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:264px;flex:0 0 264px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transition:margin .2s ease}
+.sidebar.collapsed{margin-left:-264px}
+.brand{padding:18px 18px 12px;border-bottom:1px solid var(--border)}
+.brand .wordmark{font-weight:800;letter-spacing:.14em;font-size:15px}
+.brand .prod{font-size:19px;font-weight:700;letter-spacing:-.01em;margin-top:2px}
+.demo-badge{display:inline-block;margin-top:10px;padding:3px 9px;border:1px solid var(--warn);
+  color:var(--warn);border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.nav{padding:10px 10px 4px;display:flex;flex-direction:column;gap:2px}
+.nav button{display:flex;align-items:center;gap:10px;text-align:left;padding:9px 10px;border-radius:8px;
+  color:var(--muted);font-size:14px;width:100%}
+.nav button:hover{background:var(--bg);color:var(--text)}
+.nav button.active{background:var(--text);color:var(--bg);font-weight:600}
+.nav button .n{font-size:11px;width:20px;text-align:center;opacity:.65;font-variant-numeric:tabular-nums}
+.side-foot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:10px 20px;flex-wrap:wrap}
+.topbar .spacer{flex:1}
+.icon-btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:7px 11px;font-size:13px}
+.icon-btn:hover{border-color:var(--muted)}
+select,input[type="text"],input[type="number"],input[type="date"],textarea{
+  background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;
+  padding:8px 10px;font:inherit;font-size:14px}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--focus);outline-offset:1px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+.content{padding:22px 20px 40px;max-width:1240px;width:100%;margin:0 auto}
+section.view{display:none}
+section.view.active{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* ---------- disclaimer ---------- */
+.disclaimer{border:1px solid var(--warn);border-radius:10px;padding:10px 14px;font-size:13px;
+  background:var(--surface);margin-bottom:18px;display:flex;gap:10px;align-items:flex-start}
+.disclaimer b{color:var(--warn);white-space:nowrap}
+
+/* ---------- cards & grids ---------- */
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(4,1fr)}
+.cols2{grid-template-columns:1fr 1fr}
+.cols3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.kpi .k-label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.kpi .k-val{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:4px 0 2px}
+.kpi .k-note{font-size:12.5px;color:var(--muted)}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid var(--border);white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:var(--ok)}
+.pill.warn{color:var(--warn);border-color:var(--warn)}
+.pill.bad{color:var(--bad);border-color:var(--bad)}
+.pill.dim{color:var(--muted)}
+.tier{font-weight:700;font-size:11px;border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:var(--muted)}
+
+/* ---------- tables ---------- */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--bg);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:var(--bg)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+
+/* ---------- controls ---------- */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.btn{border:1px solid var(--text);background:var(--text);color:var(--bg);border-radius:8px;padding:8px 14px;font-weight:600;font-size:13.5px}
+.btn.ghost{background:var(--surface);color:var(--text);border-color:var(--border)}
+.btn.ghost:hover{border-color:var(--muted)}
+.btn:active{transform:translateY(1px)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar .spacer{flex:1}
+
+/* ---------- charts ---------- */
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.chart-box h3{margin-bottom:2px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+svg text{fill:var(--muted);font-size:11px}
+svg .axis{stroke:var(--chart-grid)}
+svg .val{fill:var(--text);font-weight:600}
+
+/* ---------- detail / drawer-ish panel ---------- */
+.detail{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:16px;margin-top:14px}
+.steps{display:flex;gap:0;flex-wrap:wrap;margin:10px 0}
+.step{flex:1;min-width:110px;padding:8px 10px;border:1px solid var(--border);font-size:12px;color:var(--muted);background:var(--surface)}
+.step:first-child{border-radius:8px 0 0 8px}.step:last-child{border-radius:0 8px 8px 0}
+.step.done{color:var(--ok);border-color:var(--ok);font-weight:600}
+.step.now{color:var(--text);border-color:var(--text);font-weight:700;background:var(--bg)}
+.checks{list-style:none;margin:8px 0;padding:0;display:grid;gap:8px}
+.checks li{display:flex;gap:9px;align-items:flex-start;font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:0 0 10px;background:var(--bar3)}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.log{list-style:none;margin:0;padding:0;font-size:13px}
+.log li{padding:7px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap}
+.log li:last-child{border-bottom:none}
+.log time{color:var(--muted);white-space:nowrap}
+
+/* ---------- gates ---------- */
+.gates{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.gate{border:1px solid var(--border);border-radius:10px;padding:10px;font-size:12px;background:var(--surface)}
+.gate b{display:block;font-size:12.5px;margin-bottom:3px}
+.gate.clear{border-color:var(--ok)} .gate.clear .gs{color:var(--ok)}
+.gate.pend .gs{color:var(--warn)} .gate.block .gs{color:var(--bad)}
+.gate .gs{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+
+/* ---------- finance ---------- */
+.fin-grid{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+.fin-inputs{display:grid;gap:10px}
+.fin-inputs .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.fin-inputs .row label{font-size:13.5px}
+.fin-inputs input[type="number"]{width:130px;text-align:right}
+input[type="range"]{width:100%;accent-color:var(--text)}
+.waterfall{display:grid;gap:0}
+.wf-row{display:flex;justify-content:space-between;padding:9px 2px;border-bottom:1px solid var(--border);font-size:14px}
+.wf-row.total{font-weight:700;border-bottom:2px solid var(--text)}
+.wf-row.neg{color:var(--bad)}
+.scen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.scen .card{text-align:left}
+.scen .big{font-size:21px;font-weight:700}
+.callout{border:1px solid var(--bad);color:var(--bad);border-radius:10px;padding:10px 14px;font-size:13.5px;background:var(--surface)}
+.callout.warnbox{border-color:var(--warn);color:var(--warn)}
+.notice{border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13.5px;background:var(--bg)}
+
+/* ---------- misc ---------- */
+.tag-demo{font-size:11px;color:var(--muted);border:1px dashed var(--border);border-radius:5px;padding:1px 6px}
+.role-note{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:10px 14px;font-size:13.5px;margin-bottom:16px}
+footer{padding:18px 20px 30px;color:var(--muted);font-size:12.5px;max-width:1240px;margin:0 auto;width:100%}
+.empty{padding:26px;text-align:center;color:var(--muted);font-size:14px}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.switch input{accent-color:var(--text);width:16px;height:16px}
+.hamb{display:none}
+
+/* ---------- responsive ---------- */
+@media (max-width:1080px){ .kpis{grid-template-columns:repeat(2,1fr)} .cols3{grid-template-columns:1fr 1fr} .gates{grid-template-columns:repeat(3,1fr)} .fin-grid{grid-template-columns:1fr} }
+@media (max-width:760px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:100%;flex:none;height:auto;transform:none;visibility:visible;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar .brand,.sidebar .side-foot{display:none}
+  .sidebar .nav{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:10px}
+  .sidebar .nav button{border:1px solid var(--border)}
+  .sidebar.nav-closed .nav{display:none}
+  #collapseBtn{display:none}
+  .hamb{display:inline-block}
+  .cols2,.cols3,.scen{grid-template-columns:1fr}
+  .gates{grid-template-columns:repeat(2,1fr)}
+  .content{padding:16px 12px 32px}
+  h1{font-size:22px}
+  .steps{flex-direction:column}.step{border-radius:0}.step:first-child{border-radius:8px 8px 0 0}.step:last-child{border-radius:0 0 8px 8px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="brand">
+      <div class="wordmark">READY-TO-RIDE</div>
+      <div class="prod">Charging Readiness Console</div>
+      <span class="demo-badge">Demo mode</span>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      Concept / pilot dashboard. Not an official Ather Energy product. No partnership, integration, or endorsement is implied. All records shown are demo data.
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="icon-btn hamb" id="hamb" aria-label="Open navigation">☰ Menu</button>
+      <button class="icon-btn" id="collapseBtn" aria-label="Collapse sidebar">⟨⟩</button>
+      <strong id="crumb" style="font-size:15px">Overview</strong>
+      <div class="spacer"></div>
+      <label class="f" style="flex-direction:row;align-items:center;gap:6px">Role
+        <select id="roleSel" aria-label="Select role view">
+          <option value="admin">Ather / Network Admin</option>
+          <option value="franchise">Franchise Owner / Operator</option>
+          <option value="society">Society / RWA Manager</option>
+          <option value="field">Field Operations / Installer</option>
+          <option value="fleet">Fleet Manager</option>
+          <option value="household">Household / Booking Customer</option>
+        </select>
+      </label>
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle light or dark theme">◐ Theme</button>
+    </div>
+
+    <div class="content">
+      <div class="disclaimer">
+        <b>Concept</b>
+        <span>Ready-to-Ride is a proposed concept/pilot. Ather administrative authority is <strong>inactive</strong> — it becomes available only if a signed partnership is recorded in Settings. Figures labelled [P] are proposed targets and [A] are assumptions to validate; nothing here is a confirmed Ather price, contract, or result.</span>
+      </div>
+      <div class="role-note" id="roleNote"></div>
+
+      <!-- ============ 1 OVERVIEW ============ -->
+      <section class="view" id="view-overview">
+        <h1>Overview</h1>
+        <p class="sub">Decision view across the full journey: booking → assessment → permission → load check → installation → verified first charge → operations → reconciliation.</p>
+        <div class="filters" role="group" aria-label="Overview filters">
+          <label class="f">Region
+            <select id="f-region"><option value="">All regions</option><option>Bengaluru</option><option>Pune</option><option>Delhi NCR</option><option>Chennai</option></select>
+          </label>
+          <label class="f">Site type
+            <select id="f-type"><option value="">All types</option><option>Society</option><option>Depot</option><option>Public</option><option>Household</option></select>
+          </label>
+          <label class="f">Status
+            <select id="f-status"><option value="">All statuses</option><option>On track</option><option>At risk</option><option>Blocked</option></select>
+          </label>
+          <button class="btn ghost" id="ov-export">Export overview CSV</button>
+        </div>
+        <div class="grid kpis" id="kpiGrid"></div>
+        <div class="grid cols2" style="margin-top:14px">
+          <div class="chart-box">
+            <h3>Readiness cases by stage</h3>
+            <div class="muted small">Open bookings per pipeline stage (demo data)</div>
+            <div id="chart-stages"></div>
+          </div>
+          <div class="chart-box">
+            <h3>Energy delivered — last 7 days (kWh)</h3>
+            <div class="muted small">All network stations, demo telemetry</div>
+            <div id="chart-energy"></div>
+            <div class="legend"><span style="--c:var(--bar)">■ kWh per day</span></div>
+          </div>
+        </div>
+        <div class="grid cols2" style="margin-top:14px">
+          <div class="card">
+            <h3>Needs action today</h3>
+            <ul class="log" id="actionBoard"></ul>
+          </div>
+          <div class="card">
+            <h3>Money snapshot — October 2026 <span class="tag-demo">Demo data</span></h3>
+            <div class="waterfall" id="ovMoney"></div>
+            <p class="small muted" style="margin:10px 0 0">Charge-ready delivery rate target of 90% is a proposed target <span class="tier">[P]</span>, not a measured result.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 2 QUEUE ============ -->
+      <section class="view" id="view-queue">
+        <h1>Charge-Ready Queue</h1>
+        <p class="sub">Every booking moves through assessment → permission → load check → installation → commissioning → verified first charge. <strong>Readiness work never changes or deprioritises vehicle delivery order.</strong></p>
+        <div class="filters">
+          <label class="f">Search<input type="text" id="q-search" placeholder="Booking ID, pin code, owner…" size="26"></label>
+          <label class="f">Stage
+            <select id="q-stage"><option value="">All stages</option><option>Assessment</option><option>Permission</option><option>Load check</option><option>Installation</option><option>Commissioning</option><option>Verified first charge</option></select>
+          </label>
+          <label class="f">Status
+            <select id="q-status"><option value="">All</option><option>On track</option><option>At risk</option><option>Blocked</option><option>Complete</option></select>
+          </label>
+        </div>
+        <div class="tbl-wrap"><table id="queueTable">
+          <thead><tr><th>Booking ID</th><th>Pin code</th><th>Delivery date</th><th>Readiness owner</th><th>Stage</th><th>Blocker</th><th>Last update</th><th>Next action</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div id="queueDetail"></div>
+      </section>
+
+      <!-- ============ 3 SOCIETIES ============ -->
+      <section class="view" id="view-societies">
+        <h1>Societies</h1>
+        <p class="sub">Society charging operations: charger inventory, building load, meter readings, resident tariffs and monthly settlement. “Zero upfront cost” and Society Yes Pack pricing are <strong>proposed, not confirmed</strong> <span class="tier">[P]</span>.</p>
+        <div class="tbl-wrap"><table id="socTable">
+          <thead><tr><th>Society ID</th><th>Society</th><th>City</th><th>Chargers</th><th>Load limit</th><th>Live load (demo)</th><th>Throttling</th><th>Meter (kWh, Oct)</th><th>Collected</th><th>Resident tariff</th><th>Settlement</th><th>Open issues</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="notice" style="margin-top:14px">Load figures are demo telemetry for this static snapshot. Tariffs shown are the demo resident tariffs recorded per society; the proposed Society Yes Pack is not a confirmed price.</div>
+      </section>
+
+      <!-- ============ 4 SITES / SIX GATES ============ -->
+      <section class="view" id="view-sites">
+        <h1>Sites and Six-Gate Pipeline</h1>
+        <p class="sub">Every society, depot and public site carries a unique ID and six gates: Access, Power, Dated demand, Commercial terms, Operations readiness, Exit plan. A site is <strong>not capital-approved until Gates 1–5 are cleared</strong>.</p>
+        <div class="filters">
+          <label class="f">Site type
+            <select id="s-type"><option value="">All types</option><option>Society</option><option>Depot</option><option>Public</option></select>
+          </label>
+          <label class="f">Investment gate
+            <select id="s-gate"><option value="">Any</option><option value="approved">Capital-approved</option><option value="pending">Not yet approved</option></select>
+          </label>
+        </div>
+        <div id="siteList" class="grid" style="gap:14px"></div>
+      </section>
+
+      <!-- ============ 5 STATIONS ============ -->
+      <section class="view" id="view-stations">
+        <h1>Charging Stations</h1>
+        <p class="sub">Station operations across the network. “Network-accessible” points include partner points reachable via proposed LECCS discovery/roaming <span class="tier">[P]</span> — they are not Ather-installed points.</p>
+        <div class="filters">
+          <label class="f">Origin
+            <select id="st-origin"><option value="">All</option><option value="installed">Ather-installed (demo)</option><option value="network">Network-accessible (partner)</option></select>
+          </label>
+          <label class="f">Status
+            <select id="st-status"><option value="">All</option><option>Online</option><option>Degraded</option><option>Offline</option></select>
+          </label>
+        </div>
+        <div class="tbl-wrap"><table id="stTable">
+          <thead><tr><th>Station ID</th><th>Station</th><th>Type</th><th>Origin</th><th>Status</th><th class="num">Uptime %</th><th class="num">Sessions (Oct)</th><th class="num">Utilisation %</th><th class="num">Energy (kWh)</th><th class="num">Open issues</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <!-- ============ 6 FRANCHISE FINANCE ============ -->
+      <section class="view" id="view-finance">
+        <h1>Franchise Finance</h1>
+        <p class="sub">Interactive station-cost calculator. Capex share and income share are set <strong>independently</strong> — they are not assumed equal. All percentages below are illustrative and editable <span class="tier">[A]</span>. Zero-subsidy base case: no subsidy is counted as revenue.</p>
+        <div class="fin-grid">
+          <div class="card">
+            <h3>Setup cost inputs (₹)</h3>
+            <div class="fin-inputs" id="capexInputs"></div>
+            <h3 style="margin-top:18px">Co-investment (illustrative)</h3>
+            <label class="f">Ather capex contribution — <span id="atherCapexPctLbl">40%</span>
+              <input type="range" id="atherCapexPct" min="0" max="100" value="40">
+            </label>
+            <label class="f" style="margin-top:8px">Ather distributable-income share — <span id="atherIncPctLbl">30%</span>
+              <input type="range" id="atherIncPct" min="0" max="100" value="30">
+            </label>
+            <h3 style="margin-top:18px">Operating inputs</h3>
+            <div class="fin-inputs" id="opexInputs"></div>
+          </div>
+          <div>
+            <div class="grid cols3" id="finKpis"></div>
+            <div class="card" style="margin-top:14px">
+              <h3>Cash waterfall — base case, monthly</h3>
+              <div class="waterfall" id="waterfall"></div>
+              <div id="finWarning" style="margin-top:12px"></div>
+            </div>
+            <div class="card" style="margin-top:14px">
+              <h3>Payback by utilisation scenario</h3>
+              <div class="scen" id="scenarios" style="margin-top:8px"></div>
+              <p class="small muted" style="margin:10px 0 0">Payback = party’s cash contribution ÷ party’s monthly distribution. Estimates only <span class="tier">[A]</span>; actuals are tracked separately in Daily Earnings.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 7 EARNINGS ============ -->
+      <section class="view" id="view-earnings">
+        <h1>Daily Earnings and Settlements</h1>
+        <p class="sub">Reconciliation of sessions, payment-provider settlements and metered energy. Manual submissions are always labelled <strong>Manual / Unverified</strong> and can never be marked Verified.</p>
+        <div class="filters">
+          <label class="f">Status
+            <select id="e-status"><option value="">All statuses</option><option>Verified</option><option>Partially matched</option><option>Mismatch</option><option>Manual / Unverified</option></select>
+          </label>
+          <label class="f">Station
+            <select id="e-station"><option value="">All stations</option></select>
+          </label>
+          <button class="btn ghost" id="e-export">Export reconciliation CSV</button>
+        </div>
+        <div class="tbl-wrap"><table id="earnTable">
+          <thead><tr><th>Date</th><th>Station</th><th class="num">Sessions</th><th class="num">Collected (₹)</th><th class="num">Provider settled (₹)</th><th class="num">Metered (kWh)</th><th class="num">Expenses (₹)</th><th>Status</th><th>Flag</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="card" style="margin-top:14px">
+          <h3>Submit a daily entry (manual)</h3>
+          <form id="earnForm">
+            <div class="filters" style="margin-bottom:8px">
+              <label class="f">Date<input type="date" id="ef-date" required></label>
+              <label class="f">Station<select id="ef-station"></select></label>
+              <label class="f">Sessions<input type="number" id="ef-sessions" min="0" required></label>
+              <label class="f">Collected (₹)<input type="number" id="ef-collected" min="0" required></label>
+              <label class="f">Expenses (₹)<input type="number" id="ef-expenses" min="0" value="0"></label>
+              <button class="btn" type="submit">Submit entry</button>
+            </div>
+            <p class="small muted" style="margin:0">Submissions in this static snapshot are kept in memory for this session only and are recorded as <strong>Manual / Unverified</strong> in the audit log below.</p>
+          </form>
+          <h3 style="margin-top:16px">Audit log</h3>
+          <ul class="log" id="auditLog"></ul>
+        </div>
+      </section>
+
+      <!-- ============ 8 FLEET ============ -->
+      <section class="view" id="view-fleet">
+        <h1>Fleet Readiness</h1>
+        <p class="sub">Depot readiness against morning departure SLAs. Per-vehicle pricing is an assumption <span class="tier">[A]</span> unless backed by an entered contract; contract terms shown are demo records.</p>
+        <div class="grid kpis" id="fleetKpis"></div>
+        <div class="tbl-wrap" style="margin-top:14px"><table id="fleetTable">
+          <thead><tr><th>Depot ID</th><th>Depot</th><th>Operator</th><th class="num">Vehicles</th><th class="num">Ready by 06:00</th><th class="num">Missed SLA</th><th>Charging complete</th><th class="num">Open issues</th><th>Contract (demo)</th><th>Monthly review</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <!-- ============ 9 MAINTENANCE ============ -->
+      <section class="view" id="view-maintenance">
+        <h1>Maintenance and Support</h1>
+        <p class="sub">Issue reporting and repair tracking across stations, chargers and battery buffers.</p>
+        <div class="filters">
+          <label class="f">Status
+            <select id="m-status"><option value="">All</option><option>Open</option><option>In progress</option><option>Resolved</option></select>
+          </label>
+          <label class="f">Severity
+            <select id="m-sev"><option value="">All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+          </label>
+        </div>
+        <div class="tbl-wrap"><table id="ticketTable">
+          <thead><tr><th>Ticket</th><th>Asset</th><th>Issue</th><th>Severity</th><th>Technician</th><th>Status</th><th class="num">Downtime (h)</th><th class="num">Repair cost (₹)</th><th>Closure reason</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <!-- ============ 10 ANALYTICS ============ -->
+      <section class="view" id="view-analytics">
+        <h1>Analytics and Reports</h1>
+        <p class="sub">Portfolio analytics from the same demo dataset. Every chart is exportable as CSV.</p>
+        <div class="grid cols2">
+          <div class="chart-box">
+            <h3>Sessions by station (October)</h3>
+            <div id="chart-stations"></div>
+            <button class="btn ghost" id="a-export-stations" style="margin-top:10px">Export CSV</button>
+          </div>
+          <div class="chart-box">
+            <h3>Sites by investment gate progress</h3>
+            <div id="chart-gates"></div>
+            <button class="btn ghost" id="a-export-gates" style="margin-top:10px">Export CSV</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3>Report pack — October 2026 <span class="tag-demo">Demo data</span></h3>
+          <ul class="log">
+            <li><span>Charge-ready delivery report</span><span class="spacer" style="flex:1"></span><span class="pill warn">Target [P]</span><button class="btn ghost" data-report="delivery">Download CSV</button></li>
+            <li><span>Settlement exception report</span><span style="flex:1"></span><span class="pill bad">2 exceptions</span><button class="btn ghost" data-report="exceptions">Download CSV</button></li>
+            <li><span>Fleet SLA report</span><span style="flex:1"></span><span class="pill ok">Generated</span><button class="btn ghost" data-report="fleet">Download CSV</button></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ 11 SOURCES & SETTINGS ============ -->
+      <section class="view" id="view-sources">
+        <h1>Sources, Assumptions, and Settings</h1>
+        <p class="sub">Every imported claim or metric carries a source tier: <span class="tier">[V]</span> Verified · <span class="tier">[R]</span> Reported · <span class="tier">[O]</span> Own-work result · <span class="tier">[P]</span> Proposed plan or target · <span class="tier">[A]</span> Assumption to validate.</p>
+        <div class="tbl-wrap"><table id="srcTable">
+          <thead><tr><th>Claim / metric</th><th>Tier</th><th>Source</th><th>Date</th><th>Verification status</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="grid cols2" style="margin-top:14px">
+          <div class="card">
+            <h3>Partnership configuration</h3>
+            <p class="small muted">Ather administrative authority stays <strong>inactive</strong> until a signed partnership is recorded. Toggling this in the demo only changes the label shown here — it does not create a real arrangement.</p>
+            <label class="switch"><input type="checkbox" id="partnerToggle"> Signed partnership recorded (demo toggle)</label>
+            <p style="margin:10px 0 0">Status: <span class="pill warn" id="partnerStatus">Inactive — no signed partnership</span></p>
+          </div>
+          <div class="card">
+            <h3>Appearance</h3>
+            <p class="small muted">Theme applies for this session. This static snapshot has no server, so the choice is not saved between visits.</p>
+            <div class="toolbar" style="margin:0">
+              <button class="btn ghost" id="themeLight">Light</button>
+              <button class="btn ghost" id="themeDark">Dark</button>
+              <button class="btn ghost" id="themeSystem">System</button>
+            </div>
+            <h3 style="margin-top:16px">About this snapshot</h3>
+            <p class="small muted" style="margin:0">Single-file static export of the Ready-to-Ride concept dashboard with the same demo data embedded. All interactions run in the browser; nothing is uploaded or saved to a server.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        Ready-to-Ride is an unaffiliated concept/pilot dashboard. It is not an official Ather Energy product; Ather has not approved it, committed investment, or provided integrations. All data on this page is demo data. Status colors (green #2F8F68, amber #C88A25, red #C64C4C) are functional only, not brand colors.
+      </footer>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= DEMO DATA ================= */
+var STAGES = ["Assessment","Permission","Load check","Installation","Commissioning","Verified first charge"];
+var bookings = [
+ {id:"BK-1042",pin:"560102",delivery:"28 Oct 2026",owner:"Divya Nair",stage:2,status:"Blocked",blocker:"Society NOC pending — Prestige Lakeside RWA",updated:"17 Oct 2026",next:"Escalate NOC request to RWA secretary",region:"Bengaluru",type:"Society",q:[true,false,true],
+  log:[["12 Oct","Survey completed; dedicated parking bay confirmed."],["15 Oct","NOC application submitted to RWA."],["17 Oct","RWA requested load certificate; shared with society manager."]]},
+ {id:"BK-1043",pin:"411045",delivery:"30 Oct 2026",owner:"Rohan Mehta",stage:1,status:"On track",blocker:"—",updated:"18 Oct 2026",next:"Collect signed permission form",region:"Pune",type:"Household",q:[true,true,null],
+  log:[["16 Oct","Assessment done — socket within 4 m of parking."],["18 Oct","Permission form issued to customer."]]},
+ {id:"BK-1044",pin:"110078",delivery:"02 Nov 2026",owner:"Arjun Malhotra",stage:3,status:"At risk",blocker:"Load upgrade quote awaited from DISCOM",updated:"17 Oct 2026",next:"Chase DISCOM quote; hold installer slot",region:"Delhi NCR",type:"Society",q:[true,true,false],
+  log:[["10 Oct","Load check: sanctioned load short by 3 kW."],["17 Oct","Upgrade application filed with DISCOM."]]},
+ {id:"BK-1045",pin:"600100",delivery:"25 Oct 2026",owner:"Divya Nair",stage:5,status:"Complete",blocker:"—",updated:"16 Oct 2026",next:"Send first-charge confirmation to customer",region:"Chennai",type:"Household",q:[true,true,true],
+  log:[["08 Oct","Installation completed and commissioned."],["16 Oct","First charge verified — 2.9 kWh session logged."]]},
+ {id:"BK-1046",pin:"560066",delivery:"05 Nov 2026",owner:"Kabir Shah",stage:0,status:"On track",blocker:"—",updated:"18 Oct 2026",next:"Schedule site assessment visit",region:"Bengaluru",type:"Society",q:[null,null,null],
+  log:[["18 Oct","Booking created; coordinator assigned."]]},
+ {id:"BK-1047",pin:"411057",delivery:"01 Nov 2026",owner:"Rohan Mehta",stage:4,status:"On track",blocker:"—",updated:"18 Oct 2026",next:"Commissioning visit — 20 Oct",region:"Pune",type:"Household",q:[true,true,true],
+  log:[["14 Oct","Charger installed; wiring certified."],["18 Oct","Commissioning scheduled."]]},
+ {id:"BK-1048",pin:"110045",delivery:"08 Nov 2026",owner:"Arjun Malhotra",stage:2,status:"Blocked",blocker:"Meter relocation approval pending",updated:"15 Oct 2026",next:"Submit relocation drawing to DISCOM",region:"Delhi NCR",type:"Society",q:[true,false,false],
+  log:[["11 Oct","Load adequate after meter relocation."],["15 Oct","Relocation approval requested."]]},
+ {id:"BK-1049",pin:"600042",delivery:"03 Nov 2026",owner:"Kabir Shah",stage:1,status:"At risk",blocker:"Customer travelling; signature pending",updated:"16 Oct 2026",next:"Re-send e-sign permission pack",region:"Chennai",type:"Household",q:[true,null,null],
+  log:[["13 Oct","Assessment complete."],["16 Oct","Waiting on customer signature."]]}
+];
+var societies = [
+ {id:"SOC-011",name:"Prestige Lakeside Habitat",city:"Bengaluru",chargers:14,limit:"120 kW",load:"86 kW",throttle:"Active — capped 70%",meter:4210,collected:58400,tariff:"₹16 / kWh",settle:"₹52,300 due 05 Nov",issues:2,throttleCls:"warn"},
+ {id:"SOC-014",name:"Kothrud Heights CHS",city:"Pune",chargers:8,limit:"80 kW",load:"41 kW",throttle:"Off",meter:2380,collected:33100,tariff:"₹15 / kWh",settle:"Settled 05 Oct",issues:0,throttleCls:"ok"},
+ {id:"SOC-019",name:"Dwarka Greens Apartment Owners Assoc.",city:"Delhi NCR",chargers:10,limit:"95 kW",load:"78 kW",throttle:"Active — capped 85%",meter:3120,collected:44900,tariff:"₹17 / kWh",settle:"₹40,100 due 05 Nov",issues:1,throttleCls:"warn"},
+ {id:"SOC-023",name:"OMR Residency",city:"Chennai",chargers:6,limit:"60 kW",load:"22 kW",throttle:"Off",meter:1490,collected:20800,tariff:"₹15 / kWh",settle:"Settled 05 Oct",issues:0,throttleCls:"ok"},
+ {id:"SOC-027",name:"Whitefield Enclave",city:"Bengaluru",chargers:12,limit:"110 kW",load:"104 kW",throttle:"Active — capped 60%",meter:3980,collected:55200,tariff:"₹16 / kWh",settle:"₹49,800 due 05 Nov",issues:3,throttleCls:"bad"}
+];
+var GATE_NAMES = ["Access","Power","Dated demand","Commercial terms","Operations readiness","Exit plan"];
+var sites = [
+ {id:"SITE-101",name:"Prestige Lakeside — Phase 2 chargers",type:"Society",region:"Bengaluru",review:"Day-30 review: 28 Oct 2026",
+  gates:[["clear","RWA access letter signed","10 Sep"],["clear","112 kW sanctioned","22 Sep"],["clear","46 dated bookings","02 Oct"],["pend","Yes Pack terms proposed [P]","—"],["pend","Operator shortlisted","—"],["clear","Removal clause drafted","05 Oct"]]},
+ {id:"SITE-104",name:"Northgate Logistics Depot",type:"Depot",region:"Delhi NCR",review:"Day-14 review: 24 Oct 2026",
+  gates:[["clear","Depot lease access confirmed","18 Sep"],["clear","250 kW connection live","30 Sep"],["clear","Fleet contract LOI [R]","08 Oct"],["clear","Terms signed (demo record)","12 Oct"],["clear","Ops team trained","15 Oct"],["clear","Exit plan agreed","15 Oct"]]},
+ {id:"SITE-107",name:"MG Road Public Hub",type:"Public",region:"Bengaluru",review:"Day-14 review: 26 Oct 2026",
+  gates:[["clear","Municipal NOC received","20 Sep"],["block","Grid upgrade pending DISCOM","—"],["clear","312 sessions/mo footfall [R]","01 Oct"],["pend","Revenue share under negotiation","—"],["pend","—","—"],["pend","—","—"]]},
+ {id:"SITE-109",name:"OMR Residency — Tower C",type:"Society",region:"Chennai",review:"Day-30 review: 30 Oct 2026",
+  gates:[["clear","RWA resolution passed","05 Sep"],["clear","60 kW verified","14 Sep"],["clear","18 dated bookings","21 Sep"],["clear","Tariff accepted by RWA","28 Sep"],["clear","Commissioned 09 Oct","09 Oct"],["clear","Exit plan filed","09 Oct"]]},
+ {id:"SITE-112",name:"Hinjewadi Fleet Yard",type:"Depot",region:"Pune",review:"Day-14 review: 29 Oct 2026",
+  gates:[["clear","Yard access confirmed","01 Oct"],["pend","Load sanction applied for","—"],["pend","Demand letter awaited","—"],["pend","—","—"],["pend","—","—"],["pend","—","—"]]}
+];
+var stations = [
+ {id:"STN-201",name:"MG Road Hub",type:"Public fast-charge",origin:"installed",status:"Online",uptime:99.1,sessions:612,util:46,energy:8420,issues:0},
+ {id:"STN-202",name:"Prestige Lakeside",type:"Society AC",origin:"installed",status:"Online",uptime:98.4,sessions:388,util:38,energy:4210,issues:2},
+ {id:"STN-203",name:"Northgate Depot",type:"Depot DC",origin:"installed",status:"Online",uptime:97.9,sessions:540,util:61,energy:11230,issues:1},
+ {id:"STN-204",name:"Kothrud Heights",type:"Society AC",origin:"installed",status:"Degraded",uptime:93.2,sessions:264,util:29,energy:2380,issues:1},
+ {id:"STN-205",name:"Airport Road Partner Point",type:"Public AC",origin:"network",status:"Online",uptime:96.0,sessions:198,util:22,energy:1760,issues:0},
+ {id:"STN-206",name:"OMR Residency",type:"Society AC",origin:"installed",status:"Offline",uptime:88.5,sessions:171,util:18,energy:1490,issues:2}
+];
+var earnings = [
+ {date:"17 Oct 2026",station:"STN-201 MG Road Hub",sessions:24,collected:4320,settled:4320,meter:118,expenses:310,status:"Verified",flag:"—"},
+ {date:"17 Oct 2026",station:"STN-202 Prestige Lakeside",sessions:15,collected:2380,settled:2210,meter:64,expenses:120,status:"Partially matched",flag:"₹170 difference under review"},
+ {date:"17 Oct 2026",station:"STN-203 Northgate Depot",sessions:31,collected:6980,settled:6980,meter:204,expenses:540,status:"Verified",flag:"—"},
+ {date:"16 Oct 2026",station:"STN-204 Kothrud Heights",sessions:9,collected:1410,settled:0,meter:38,expenses:0,status:"Manual / Unverified",flag:"Manual entry — no provider record yet"},
+ {date:"16 Oct 2026",station:"STN-206 OMR Residency",sessions:11,collected:1720,settled:2360,meter:45,expenses:210,status:"Mismatch",flag:"Settled amount exceeds collected — possible duplicate"},
+ {date:"16 Oct 2026",station:"STN-201 MG Road Hub",sessions:22,collected:3960,settled:3960,meter:109,expenses:285,status:"Verified",flag:"—"},
+ {date:"15 Oct 2026",station:"STN-205 Airport Rd Partner",sessions:8,collected:1190,settled:1130,meter:31,expenses:60,status:"Partially matched",flag:"Meter reading missing for 1 session"}
+];
+var auditEntries = [
+ ["17 Oct 2026, 18:02","STN-202 entry auto-matched: sessions and meter agree; provider short by ₹170 → Partially matched."],
+ ["17 Oct 2026, 09:14","Field ops uploaded meter photo evidence for STN-203 (demo)."],
+ ["16 Oct 2026, 20:41","Manual entry submitted for STN-204 by franchise owner — recorded as Manual / Unverified."],
+ ["16 Oct 2026, 11:05","Duplicate settlement flagged on STN-206; status set to Mismatch pending review."]
+];
+var fleets = [
+ {id:"DEP-01",name:"Northgate Logistics Depot",op:"Northgate Logistics (demo)",vehicles:48,ready:45,missed:3,charge:"94% complete",issues:2,contract:"₹4,900 / vehicle / month [A]",review:"28 Oct 2026"},
+ {id:"DEP-02",name:"Hinjewadi Fleet Yard",op:"SwiftKart Deliveries (demo)",vehicles:32,ready:32,missed:0,charge:"100% complete",issues:0,contract:"₹4,900 / vehicle / month [A]",review:"29 Oct 2026"},
+ {id:"DEP-03",name:"Whitefield Last-Mile Hub",op:"CityDash (demo)",vehicles:26,ready:21,missed:5,charge:"81% complete",issues:4,contract:"No contract entered — pricing is assumption [A]",review:"31 Oct 2026"}
+];
+var tickets = [
+ {id:"TK-331",asset:"STN-206 · Charger 3",issue:"Charger offline — no heartbeat since 17 Oct",sev:"Critical",tech:"Imran Shaikh",status:"In progress",down:26,cost:0,closure:"—"},
+ {id:"TK-327",asset:"STN-202 · Charger 7",issue:"RFID reader intermittent",sev:"High",tech:"Priya Nair",status:"Open",down:4,cost:0,closure:"—"},
+ {id:"TK-319",asset:"STN-203 · Battery buffer",issue:"Buffer cell temperature warning",sev:"High",tech:"Imran Shaikh",status:"In progress",down:9,cost:12400,closure:"—"},
+ {id:"TK-312",asset:"STN-204 · Charger 2",issue:"Payment terminal reboot loop",sev:"Medium",tech:"Sana Iqbal",status:"Resolved",down:6,cost:3200,closure:"Terminal replaced; verified with test session"},
+ {id:"TK-305",asset:"STN-201 · Charger 1",issue:"Cable insulation wear",sev:"Medium",tech:"Sana Iqbal",status:"Resolved",down:3,cost:5800,closure:"Cable replaced; safety check passed"},
+ {id:"TK-298",asset:"SOC-027 · Load controller",issue:"Throttling threshold misconfigured",sev:"Low",tech:"Priya Nair",status:"Resolved",down:1,cost:0,closure:"Threshold reset to 60% cap; load re-verified"}
+];
+var sources = [
+ {claim:"Charge-ready delivery rate target: 90%",tier:"[P]",src:"Ready-to-Ride concept brief",date:"Oct 2026",status:"Proposed target — not measured"},
+ {claim:"Society Yes Pack pricing / zero upfront cost",tier:"[P]",src:"Concept proposal",date:"Oct 2026",status:"Proposed — unconfirmed"},
+ {claim:"Fleet price ₹4,900 / vehicle / month",tier:"[A]",src:"Working assumption",date:"Oct 2026",status:"Assumption — no contract entered"},
+ {claim:"Ather capex share 40% / income share 30% (calculator defaults)",tier:"[A]",src:"Illustrative defaults in calculator",date:"Oct 2026",status:"Assumption — editable, not agreed terms"},
+ {claim:"Booking, station, earnings and ticket records in this snapshot",tier:"[O]",src:"Demo dataset embedded in this page",date:"18 Oct 2026",status:"Demo data — not operational records"},
+ {claim:"46 dated demand bookings at SITE-101",tier:"[R]",src:"Site pipeline record (demo)",date:"02 Oct 2026",status:"Reported — evidence on file in full app"},
+ {claim:"LECCS discovery / roaming availability",tier:"[P]",src:"Concept proposal",date:"Oct 2026",status:"Proposed — integration-dependent"},
+ {claim:"Any subsidy or government incentive revenue",tier:"[A]",src:"Excluded from base case",date:"Oct 2026",status:"Not counted — zero-subsidy base case"}
+];
+var energyWeek = [["Mon",612],["Tue",655],["Wed",598],["Thu",701],["Fri",733],["Sat",812],["Sun",690]];
+
+/* ================= HELPERS ================= */
+function $(id){return document.getElementById(id);}
+function inr(n){var s=Math.round(Math.abs(n)).toString(),out="",i;for(i=0;i<s.length;i++){out+=s[i];var rem=s.length-i-1;if(rem>0&&((rem%2===1&&rem>1)||rem===1&&s.length>3)&&false){}} 
+  // Indian grouping
+  var x=Math.round(Math.abs(n)).toString();var last=x.slice(-3);var rest=x.slice(0,-3);
+  var res=(rest?rest.replace(/\B(?=(\d{2})+(?!\d))/g,",")+",":"")+last;
+  return (n<0?"−₹":"₹")+res;}
+function pillFor(status){
+  var ok=["Complete","Verified","Online","On track","Resolved","Settled"], warn=["At risk","Partially matched","Degraded","In progress","Open"], bad=["Blocked","Mismatch","Offline","Critical"];
+  var cls = ok.indexOf(status)>=0?"ok":(bad.indexOf(status)>=0?"bad":(warn.indexOf(status)>=0?"warn":"dim"));
+  return '<span class="pill '+cls+'">'+status+'</span>';
+}
+function downloadCSV(name, rows){
+  var csv = rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(",");}).join("\n");
+  var blob = new Blob([csv],{type:"text/csv"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},500);
+}
+function barChart(el, data, opts){
+  opts=opts||{};var max=0,i;for(i=0;i<data.length;i++)max=Math.max(max,data[i][1]);
+  var W=520,H=210,pad=34,bw=Math.min(56,(W-pad*2)/data.length*0.6),gap=(W-pad*2)/data.length;
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="'+(opts.label||"Bar chart")+'">';
+  for(i=0;i<=4;i++){var y=pad+(H-pad*1.6)*i/4;s+='<line class="axis" x1="'+pad+'" x2="'+(W-8)+'" y1="'+y+'" y2="'+y+'"/>';}
+  for(i=0;i<data.length;i++){
+    var h=(H-pad*1.6)*(max?data[i][1]/max:0),x=pad+gap*i+(gap-bw)/2,y=H-30-h;
+    s+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h,1)+'" rx="3" fill="'+(data[i][2]||"var(--bar)")+'"><title>'+data[i][0]+': '+data[i][1]+'</title></rect>';
+    s+='<text class="val" x="'+(x+bw/2)+'" y="'+(y-6)+'" text-anchor="middle">'+data[i][1]+'</text>';
+    s+='<text x="'+(x+bw/2)+'" y="'+(H-12)+'" text-anchor="middle">'+data[i][0]+'</text>';
+  }
+  s+='</svg>';el.innerHTML=s;
+}
+
+/* ================= NAVIGATION ================= */
+var NAV=[["overview","Overview"],["queue","Charge-Ready Queue"],["societies","Societies"],["sites","Sites & Six-Gate Pipeline"],["stations","Charging Stations"],["finance","Franchise Finance"],["earnings","Daily Earnings & Settlements"],["fleet","Fleet Readiness"],["maintenance","Maintenance & Support"],["analytics","Analytics & Reports"],["sources","Sources, Assumptions & Settings"]];
+var navEl=$("nav");
+NAV.forEach(function(n,i){
+  var b=document.createElement("button");
+  b.innerHTML='<span class="n">'+(i+1)+'</span>'+n[1];
+  b.setAttribute("data-view",n[0]);
+  b.addEventListener("click",function(){showView(n[0]);});
+  navEl.appendChild(b);
+});
+function showView(id){
+  var views=document.querySelectorAll("section.view");
+  for(var i=0;i<views.length;i++)views[i].classList.toggle("active",views[i].id==="view-"+id);
+  var btns=navEl.querySelectorAll("button");
+  for(var j=0;j<btns.length;j++)btns[j].classList.toggle("active",btns[j].getAttribute("data-view")===id);
+  for(var k=0;k<NAV.length;k++)if(NAV[k][0]===id)$("crumb").textContent=NAV[k][1];
+  $("sidebar").classList.remove("open");
+  window.scrollTo(0,0);
+}
+$("collapseBtn").addEventListener("click",function(){$("sidebar").classList.toggle("collapsed");});
+$("hamb").addEventListener("click",function(){$("sidebar").classList.toggle("nav-closed");});
+
+/* ================= THEME ================= */
+function setTheme(t){
+  if(t==="system"){document.documentElement.removeAttribute("data-theme");}
+  else document.documentElement.setAttribute("data-theme",t);
+  renderCharts();
+}
+$("themeBtn").addEventListener("click",function(){
+  var cur=document.documentElement.getAttribute("data-theme");
+  if(!cur){cur=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}
+  setTheme(cur==="dark"?"light":"dark");
+});
+$("themeLight").addEventListener("click",function(){setTheme("light");});
+$("themeDark").addEventListener("click",function(){setTheme("dark");});
+$("themeSystem").addEventListener("click",function(){setTheme("system");});
+if(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.setAttribute("data-theme","dark");}
+
+/* ================= ROLES ================= */
+var ROLE_NOTES={
+ admin:"<strong>Ather / Network Admin view.</strong> Full pipeline, approvals, portfolio analytics and settlements. Administrative authority is <strong>inactive</strong> until a signed partnership is recorded (see Sources &amp; Settings).",
+ franchise:"<strong>Franchise Owner / Operator view.</strong> Focus: your station (STN-201 MG Road Hub), investment, daily earnings, income share and payback. Other stations are shown read-only for context.",
+ society:"<strong>Society / RWA Manager view.</strong> Focus: your society’s chargers, load status, meter readings, resident tariff and settlement statements.",
+ field:"<strong>Field Operations / Installer view.</strong> Focus: surveys, evidence, permissions, installation milestones, commissioning and service tickets assigned to field teams.",
+ fleet:"<strong>Fleet Manager view.</strong> Focus: depot readiness, morning departure SLA, charging completion and contract performance.",
+ household:"<strong>Household / Booking Customer view.</strong> Focus: your readiness checklist, assigned coordinator, permissions, installation and first-charge status. Demo booking: BK-1043."
+};
+$("roleSel").addEventListener("change",function(){
+  $("roleNote").innerHTML=ROLE_NOTES[this.value];
+  if(this.value==="household"){showView("queue");selectBooking("BK-1043");}
+  if(this.value==="franchise"){showView("finance");}
+  if(this.value==="society"){showView("societies");}
+  if(this.value==="fleet"){showView("fleet");}
+  if(this.value==="field"){showView("queue");}
+});
+$("roleNote").innerHTML=ROLE_NOTES.admin;
+
+/* ================= OVERVIEW ================= */
+function renderOverview(){
+  var region=$("f-region").value, type=$("f-type").value, status=$("f-status").value;
+  var bs=bookings.filter(function(b){return (!region||b.region===region)&&(!type||b.type===type);});
+  var complete=bs.filter(function(b){return b.status==="Complete";}).length;
+  var blocked=bs.filter(function(b){return b.status==="Blocked";}).length;
+  var filtered = status? bs.filter(function(b){return b.status===status;}) : bs;
+  var online=stations.filter(function(s){return s.status==="Online";}).length;
+  var totSessions=stations.reduce(function(a,s){return a+s.sessions;},0);
+  var totEnergy=stations.reduce(function(a,s){return a+s.energy;},0);
+  var avgUptime=(stations.reduce(function(a,s){return a+s.uptime;},0)/stations.length).toFixed(1);
+  var fleetReady=fleets.reduce(function(a,f){return a+f.ready;},0), fleetTotal=fleets.reduce(function(a,f){return a+f.vehicles;},0);
+  var kpis=[
+   ["Charge-ready rate (demo)", bs.length?Math.round(complete/bs.length*100)+"%":"—", complete+" of "+bs.length+" bookings fully verified <span class='tier'>[O]</span>"],
+   ["Bookings in pipeline", String(filtered.length), blocked+" blocked · "+bs.filter(function(b){return b.status==="At risk";}).length+" at risk"],
+   ["Stations online", online+" / "+stations.length, "Avg uptime "+avgUptime+"% · "+totSessions.toLocaleString("en-IN")+" sessions in Oct"],
+   ["Energy delivered (Oct)", totEnergy.toLocaleString("en-IN")+" kWh", "Across all network stations (demo telemetry)"],
+   ["Fleet departure SLA", fleetTotal?Math.round(fleetReady/fleetTotal*100)+"%":"—", fleetReady+" of "+fleetTotal+" vehicles ready by 06:00 today"],
+   ["Collected revenue (Oct)", inr(212500), "Societies + stations, demo records"],
+   ["Distributable income (Oct)", inr(68400), "After opex and maintenance reserve — see Finance"],
+   ["Settlement exceptions", "2", "1 mismatch · 1 partially matched — see Earnings"]
+  ];
+  $("kpiGrid").innerHTML=kpis.map(function(k){return '<div class="card kpi"><div class="k-label">'+k[0]+'</div><div class="k-val mono">'+k[1]+'</div><div class="k-note">'+k[2]+'</div></div>';}).join("");
+  var stageCounts=STAGES.map(function(s,i){return [s.replace("Verified first charge","First charge"), bs.filter(function(b){return b.stage===i;}).length];});
+  barChart($("chart-stages"), stageCounts, {label:"Readiness cases by stage"});
+  barChart($("chart-energy"), energyWeek, {label:"Energy delivered last 7 days"});
+  var actions=[
+   ["Today","BK-1042 — Society NOC blocked at load check; escalate to Prestige Lakeside RWA.","bad"],
+   ["Today","STN-206 OMR Residency offline 26 h (TK-331, Critical) — technician on site.","bad"],
+   ["Today","STN-206 earnings mismatch: settled exceeds collected by ₹640 — review for duplicate.","warn"],
+   ["24 Oct","SITE-104 Northgate Depot Day-14 gate review due.","warn"],
+   ["This week","Whitefield Enclave load at 104 kW of 110 kW limit — throttling capped at 60%.","warn"]
+  ];
+  $("actionBoard").innerHTML=actions.map(function(a){return '<li><span class="dot '+a[2]+'"></span><span><strong>'+a[0]+':</strong> '+a[1]+'</span></li>';}).join("");
+  $("ovMoney").innerHTML=
+    '<div class="wf-row"><span>Collected revenue (excl. GST)</span><strong class="mono">'+inr(212500)+'</strong></div>'+
+    '<div class="wf-row"><span>Operating expenses</span><span class="mono">− '+inr(121900)+'</span></div>'+
+    '<div class="wf-row"><span>Maintenance reserve</span><span class="mono">− '+inr(22200)+'</span></div>'+
+    '<div class="wf-row total"><span>Distributable income</span><span class="mono">'+inr(68400)+'</span></div>'+
+    '<div class="wf-row"><span>Ather distribution (30% illustrative [A])</span><span class="mono">'+inr(20520)+'</span></div>'+
+    '<div class="wf-row"><span>Franchise-owner distribution (70%)</span><span class="mono">'+inr(47880)+'</span></div>';
+}
+["f-region","f-type","f-status"].forEach(function(id){$(id).addEventListener("change",renderOverview);});
+$("ov-export").addEventListener("click",function(){
+  downloadCSV("overview-oct-2026.csv",[["Metric","Value"],["Bookings in pipeline",bookings.length],["Blocked",bookings.filter(function(b){return b.status==="Blocked";}).length],["Stations online",stations.filter(function(s){return s.status==="Online";}).length],["Sessions (Oct)",stations.reduce(function(a,s){return a+s.sessions;},0)],["Energy kWh (Oct)",stations.reduce(function(a,s){return a+s.energy;},0)],["Collected revenue INR",212500],["Distributable income INR",68400]]);
+});
+
+/* ================= QUEUE ================= */
+function renderQueue(){
+  var q=$("q-search").value.toLowerCase(), st=$("q-stage").value, ss=$("q-status").value;
+  var rows=bookings.filter(function(b){
+    return (!q||(b.id+" "+b.pin+" "+b.owner).toLowerCase().indexOf(q)>=0)&&(!st||STAGES[b.stage]===st)&&(!ss||b.status===ss);
+  });
+  var tb=document.querySelector("#queueTable tbody");
+  if(!rows.length){tb.innerHTML='<tr><td colspan="9"><div class="empty">No bookings match these filters.</div></td></tr>';return;}
+  tb.innerHTML=rows.map(function(b){
+    return '<tr class="clickable" data-id="'+b.id+'"><td><strong>'+b.id+'</strong></td><td class="mono">'+b.pin+'</td><td>'+b.delivery+'</td><td>'+b.owner+'</td><td>'+STAGES[b.stage]+'</td><td>'+b.blocker+'</td><td>'+b.updated+'</td><td>'+b.next+'</td><td>'+pillFor(b.status)+'</td></tr>';
+  }).join("");
+  var trs=tb.querySelectorAll("tr.clickable");
+  for(var i=0;i<trs.length;i++)trs[i].addEventListener("click",function(){selectBooking(this.getAttribute("data-id"));});
+}
+function qMark(v){return v===true?'<span class="dot ok"></span>':(v===false?'<span class="dot bad"></span>':'<span class="dot warn"></span>');}
+function qText(v){return v===true?"Yes — confirmed":(v===false?"No — action needed":"Not yet checked");}
+function selectBooking(id){
+  var b=null,i;for(i=0;i<bookings.length;i++)if(bookings[i].id===id)b=bookings[i];
+  if(!b)return;
+  var steps=STAGES.map(function(s,idx){
+    var cls=idx<b.stage||b.status==="Complete"&&idx<=b.stage?"done":(idx===b.stage?"now":"");
+    if(b.status==="Complete")cls="done";
+    return '<div class="step '+cls+'">'+(idx+1)+". "+s+'</div>';
+  }).join("");
+  var qs=["Is there a parking space and a usable socket?","Is society permission required, and has it been secured?","Is the electrical load adequate, or is an upgrade needed?"];
+  var checks=qs.map(function(q,idx){return '<li>'+qMark(b.q[idx])+'<span><strong>'+q+'</strong><br><span class="muted">'+qText(b.q[idx])+'</span></span></li>';}).join("");
+  var log=b.log.map(function(l){return '<li><time>'+l[0]+'</time><span>'+l[1]+'</span></li>';}).join("");
+  $("queueDetail").innerHTML='<div class="detail"><h3>'+b.id+' — readiness detail</h3>'+
+    '<p class="small muted" style="margin:0 0 6px">Owner: '+b.owner+' · Pin '+b.pin+' · Delivery '+b.delivery+' (delivery order is never changed by readiness work) · '+pillFor(b.status)+'</p>'+
+    '<div class="steps">'+steps+'</div>'+
+    '<h3 style="margin-top:14px">Three-question readiness check</h3><ul class="checks">'+checks+'</ul>'+
+    '<p class="small"><strong>Blocker:</strong> '+b.blocker+' &nbsp;·&nbsp; <strong>Next action:</strong> '+b.next+'</p>'+
+    '<h3 style="margin-top:14px">Activity log</h3><ul class="log">'+log+'</ul>'+
+    '<p class="small muted" style="margin:10px 0 0">Evidence attachments (survey photos, signed NOC, load certificate) are stored per booking in the full app; this snapshot lists them in the activity log. <span class="tag-demo">Demo data</span></p></div>';
+}
+["q-search","q-stage","q-status"].forEach(function(id){$(id).addEventListener("input",renderQueue);$(id).addEventListener("change",renderQueue);});
+
+/* ================= SOCIETIES ================= */
+function renderSocieties(){
+  document.querySelector("#socTable tbody").innerHTML=societies.map(function(s){
+    return '<tr><td><strong>'+s.id+'</strong></td><td>'+s.name+'</td><td>'+s.city+'</td><td class="num">'+s.chargers+'</td><td>'+s.limit+'</td><td>'+s.load+'</td><td>'+pillFor(s.throttleCls==="ok"?"On track":(s.throttleCls==="bad"?"Blocked":"At risk")).replace(/On track|Blocked|At risk/,s.throttle)+'</td><td class="num">'+s.meter.toLocaleString("en-IN")+'</td><td class="num">'+inr(s.collected)+'</td><td>'+s.tariff+'</td><td>'+s.settle+'</td><td class="num">'+s.issues+'</td></tr>';
+  }).join("");
+}
+
+/* ================= SITES / GATES ================= */
+function gatePill(g){return g[0]==="clear"?'<span class="gs">Cleared</span>':(g[0]==="block"?'<span class="gs">Blocked</span>':'<span class="gs">Pending</span>');}
+function renderSites(){
+  var t=$("s-type").value, g=$("s-gate").value;
+  var list=sites.filter(function(s){
+    var approved=s.gates.slice(0,5).every(function(x){return x[0]==="clear";});
+    return (!t||s.type===t)&&(!g||(g==="approved"?approved:!approved));
+  });
+  if(!list.length){$("siteList").innerHTML='<div class="card empty">No sites match these filters.</div>';return;}
+  $("siteList").innerHTML=list.map(function(s){
+    var approved=s.gates.slice(0,5).every(function(x){return x[0]==="clear";});
+    var gates=s.gates.map(function(gt,i){
+      return '<div class="gate '+gt[0]+'"><b>'+(i+1)+". "+GATE_NAMES[i]+'</b>'+gatePill(gt)+'<br><span class="muted">'+gt[1]+(gt[2]!=="—"?'<br>'+gt[2]:"")+'</span></div>';
+    }).join("");
+    return '<div class="card"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><h3 style="margin:0">'+s.id+' · '+s.name+'</h3><span style="flex:1"></span><span class="pill dim">'+s.type+' · '+s.region+'</span>'+(approved?'<span class="pill ok">Capital-approved</span>':'<span class="pill warn">Not capital-approved</span>')+'</div>'+
+      '<p class="small muted" style="margin:6px 0 12px">'+s.review+' · Each gate carries an owner, evidence, date and audit history in the full record.</p><div class="gates">'+gates+'</div></div>';
+  }).join("");
+}
+["s-type","s-gate"].forEach(function(id){$(id).addEventListener("change",renderSites);});
+
+/* ================= STATIONS ================= */
+function renderStations(){
+  var o=$("st-origin").value, s=$("st-status").value;
+  var rows=stations.filter(function(x){return (!o||x.origin===o)&&(!s||x.status===s);});
+  var tb=document.querySelector("#stTable tbody");
+  tb.innerHTML=rows.length?rows.map(function(x){
+    return '<tr><td><strong>'+x.id+'</strong></td><td>'+x.name+'</td><td>'+x.type+'</td><td>'+(x.origin==="installed"?"Ather-installed (demo)":'Network-accessible · LECCS [P]')+'</td><td>'+pillFor(x.status)+'</td><td class="num">'+x.uptime+'%</td><td class="num">'+x.sessions+'</td><td class="num">'+x.util+'%</td><td class="num">'+x.energy.toLocaleString("en-IN")+'</td><td class="num">'+x.issues+'</td></tr>';
+  }).join(""):'<tr><td colspan="10"><div class="empty">No stations match these filters.</div></td></tr>';
+}
+["st-origin","st-status"].forEach(function(id){$(id).addEventListener("change",renderStations);});
+
+/* ================= FINANCE ================= */
+var capexFields=[
+ ["charger","Charger hardware",450000],["battery","Battery buffer (optional)",200000],["civil","Civil / electrical installation",280000],
+ ["grid","Grid upgrade",120000],["software","Software & commissioning",90000],["launch","Launch, contingency & working capital",130000]];
+var opexFields=[
+ ["price","Price per session (₹)",180],["elec","Electricity cost per session (₹)",70],
+ ["host","Host / franchise payment (₹ / month)",6000],["ops","Operations (₹ / month)",9000],
+ ["maint","Maintenance (₹ / month)",4000],["reserve","Battery reserve (₹ / month)",3000],
+ ["platformPct","Platform & payment fees (% of revenue)",5]];
+function buildFinInputs(){
+  $("capexInputs").innerHTML=capexFields.map(function(f){return '<div class="row"><label for="cap-'+f[0]+'">'+f[1]+'</label><input type="number" id="cap-'+f[0]+'" value="'+f[2]+'" min="0" step="1000"></div>';}).join("");
+  $("opexInputs").innerHTML=opexFields.map(function(f){return '<div class="row"><label for="op-'+f[0]+'">'+f[1]+'</label><input type="number" id="op-'+f[0]+'" value="'+f[2]+'" min="0" step="1"></div>';}).join("");
+  var inputs=document.querySelectorAll("#capexInputs input, #opexInputs input");
+  for(var i=0;i<inputs.length;i++)inputs[i].addEventListener("input",renderFinance);
+  $("atherCapexPct").addEventListener("input",renderFinance);
+  $("atherIncPct").addEventListener("input",renderFinance);
+}
+function finVal(id){var v=parseFloat($(id).value);return isNaN(v)?0:v;}
+function financeCalc(sessionsPerDay){
+  var capex=capexFields.reduce(function(a,f){return a+finVal("cap-"+f[0]);},0);
+  var atherPct=finVal("atherCapexPct"), incPct=finVal("atherIncPct");
+  var price=finVal("op-price"), elec=finVal("op-elec");
+  var revenue=sessionsPerDay*price*30;
+  var platform=revenue*finVal("op-platformPct")/100;
+  var elecCost=sessionsPerDay*elec*30;
+  var opex=elecCost+platform+finVal("op-host")+finVal("op-ops")+finVal("op-maint");
+  var reserve=finVal("op-reserve");
+  var distributable=revenue-opex-reserve;
+  var atherCapex=capex*atherPct/100, frCapex=capex-atherCapex;
+  var atherDist=distributable>0?distributable*incPct/100:0;
+  var frDist=distributable>0?distributable-atherDist:0;
+  var varPerSession=price-elec-price*finVal("op-platformPct")/100;
+  var fixed=finVal("op-host")+finVal("op-ops")+finVal("op-maint")+reserve;
+  var breakeven=varPerSession>0?fixed/30/varPerSession:Infinity;
+  return {capex:capex,atherCapex:atherCapex,frCapex:frCapex,revenue:revenue,opex:opex,reserve:reserve,
+    distributable:distributable,atherDist:atherDist,frDist:frDist,breakeven:breakeven,
+    atherPay:atherDist>0?atherCapex/atherDist:Infinity,frPay:frDist>0?frCapex/frDist:Infinity};
+}
+function payText(months){
+  if(!isFinite(months))return "Not enough validated data";
+  if(months>=12)return (months/12).toFixed(1)+" yrs ("+Math.round(months)+" mo)";
+  return Math.round(months)+" months";
+}
+function renderFinance(){
+  $("atherCapexPctLbl").textContent=$("atherCapexPct").value+"%";
+  $("atherIncPctLbl").textContent=$("atherIncPct").value+"%";
+  var base=financeCalc(12);
+  var kpis=[
+   ["Total setup cost",inr(base.capex),"All capex lines, editable"],
+   ["Ather contribution ("+$("atherCapexPct").value+"%)",inr(base.atherCapex),"Illustrative [A]"],
+   ["Franchise contribution ("+(100-$("atherCapexPct").value)+"%)",inr(base.frCapex),"Illustrative [A]"],
+   ["Break-even",isFinite(base.breakeven)?base.breakeven.toFixed(1)+" sessions/day":"Not enough validated data","Sessions/day to cover monthly costs"],
+   ["Monthly operating surplus (base)",inr(base.distributable+base.reserve),"Before maintenance reserve"],
+   ["Distributable income (base)",inr(base.distributable),base.distributable<=0?"No payout — see warning":"Split "+$("atherIncPct").value+" / "+(100-$("atherIncPct").value)]
+  ];
+  $("finKpis").innerHTML=kpis.map(function(k){return '<div class="card kpi"><div class="k-label">'+k[0]+'</div><div class="k-val mono" style="font-size:22px">'+k[1]+'</div><div class="k-note">'+k[2]+'</div></div>';}).join("");
+  $("waterfall").innerHTML=
+    '<div class="wf-row"><span>Collected revenue (excl. GST) — 12 sessions/day</span><strong class="mono">'+inr(base.revenue)+'</strong></div>'+
+    '<div class="wf-row"><span>Operating expenses (electricity, host, platform, ops, maintenance)</span><span class="mono">− '+inr(base.opex)+'</span></div>'+
+    '<div class="wf-row"><span>Agreed maintenance / battery reserve</span><span class="mono">− '+inr(base.reserve)+'</span></div>'+
+    '<div class="wf-row total'+(base.distributable<0?" neg":"")+'"><span>Distributable income</span><span class="mono">'+inr(base.distributable)+'</span></div>'+
+    '<div class="wf-row"><span>Ather distribution ('+$("atherIncPct").value+'%)</span><span class="mono">'+inr(base.atherDist)+'</span></div>'+
+    '<div class="wf-row"><span>Franchise-owner distribution ('+(100-$("atherIncPct").value)+'%)</span><span class="mono">'+inr(base.frDist)+'</span></div>';
+  $("finWarning").innerHTML=base.distributable<=0?
+    '<div class="callout"><strong>No payout.</strong> Distributable income is zero or negative at base utilisation, so neither party receives a distribution. Loss-funding terms need to be defined before launch.</div>':
+    '<div class="callout warnbox">Estimates only [A]. At low utilisation (5 sessions/day) this model turns negative — check the scenarios below. Loss-funding terms are not defined in this concept.</div>';
+  var scen=[["Low — 5 sessions/day",5],["Base — 12 sessions/day",12],["High — 20 sessions/day",20]];
+  $("scenarios").innerHTML=scen.map(function(sc){
+    var r=financeCalc(sc[1]);
+    return '<div class="card"><div class="k-label" style="font-size:12px;color:var(--muted);font-weight:600">'+sc[0]+'</div>'+
+     '<div class="big mono" style="margin:6px 0">'+inr(r.distributable)+'</div><div class="small muted">distributable / month</div>'+
+     '<div class="small" style="margin-top:8px">Ather payback: <strong>'+payText(r.atherPay)+'</strong><br>Franchise payback: <strong>'+payText(r.frPay)+'</strong></div>'+
+     (r.distributable<=0?'<p class="small" style="color:var(--bad);margin:8px 0 0">Negative — no payout; loss-funding terms needed.</p>':"")+'</div>';
+  }).join("");
+}
+
+/* ================= EARNINGS ================= */
+function statusPill(s){return pillFor(s==="Manual / Unverified"?"At risk":s).replace(/At risk/,s);}
+function renderEarnings(){
+  var st=$("e-status").value, sn=$("e-station").value;
+  var rows=earnings.filter(function(e){return (!st||e.status===st)&&(!sn||e.station.indexOf(sn)===0);});
+  var tb=document.querySelector("#earnTable tbody");
+  tb.innerHTML=rows.length?rows.map(function(e){
+    return '<tr><td>'+e.date+'</td><td>'+e.station+'</td><td class="num">'+e.sessions+'</td><td class="num">'+inr(e.collected)+'</td><td class="num">'+inr(e.settled)+'</td><td class="num">'+e.meter+'</td><td class="num">'+inr(e.expenses)+'</td><td>'+statusPill(e.status)+'</td><td class="small muted">'+e.flag+'</td></tr>';
+  }).join(""):'<tr><td colspan="9"><div class="empty">No entries match these filters.</div></td></tr>';
+  $("auditLog").innerHTML=auditEntries.map(function(a){return '<li><time>'+a[0]+'</time><span>'+a[1]+'</span></li>';}).join("");
+}
+function fillStationSelects(){
+  var names=stations.map(function(s){return s.id+" "+s.name;});
+  $("e-station").innerHTML='<option value="">All stations</option>'+stations.map(function(s){return '<option value="'+s.id+'">'+s.id+" "+s.name+'</option>';}).join("");
+  $("ef-station").innerHTML=names.map(function(n){return '<option>'+n+'</option>';}).join("");
+}
+["e-status","e-station"].forEach(function(id){$(id).addEventListener("change",renderEarnings);});
+$("earnForm").addEventListener("submit",function(ev){
+  ev.preventDefault();
+  var d=$("ef-date").value;if(!d)return;
+  var parts=d.split("-");var dateStr=parts[2]+" / "+parts[1]+" / "+parts[0];
+  earnings.unshift({date:dateStr,station:$("ef-station").value,sessions:+$("ef-sessions").value||0,collected:+$("ef-collected").value||0,settled:0,meter:0,expenses:+$("ef-expenses").value||0,status:"Manual / Unverified",flag:"Manual entry — awaiting provider and meter data"});
+  auditEntries.unshift([dateStr,"Manual entry submitted for "+$("ef-station").value+" — recorded as Manual / Unverified. Manual entries are never auto-verified."]);
+  renderEarnings();
+  this.reset();
+});
+$("e-export").addEventListener("click",function(){
+  var rows=[["Date","Station","Sessions","Collected INR","Provider settled INR","Metered kWh","Expenses INR","Status","Flag"]];
+  earnings.forEach(function(e){rows.push([e.date,e.station,e.sessions,e.collected,e.settled,e.meter,e.expenses,e.status,e.flag]);});
+  downloadCSV("reconciliation-oct-2026.csv",rows);
+});
+
+/* ================= FLEET ================= */
+function renderFleet(){
+  var total=fleets.reduce(function(a,f){return a+f.vehicles;},0), ready=fleets.reduce(function(a,f){return a+f.ready;},0), missed=fleets.reduce(function(a,f){return a+f.missed;},0);
+  var kpis=[["Vehicles due today",String(total),fleets.length+" depots"],["Ready by 06:00 SLA",String(ready),Math.round(ready/total*100)+"% of fleet"],["Missed SLA",String(missed),missed?"Charging incomplete at 2 depots":"All depots met SLA"],["Open fleet issues",String(fleets.reduce(function(a,f){return a+f.issues;},0)),"See Maintenance for station-level tickets"]];
+  $("fleetKpis").innerHTML=kpis.map(function(k){return '<div class="card kpi"><div class="k-label">'+k[0]+'</div><div class="k-val mono">'+k[1]+'</div><div class="k-note">'+k[2]+'</div></div>';}).join("");
+  document.querySelector("#fleetTable tbody").innerHTML=fleets.map(function(f){
+    return '<tr><td><strong>'+f.id+'</strong></td><td>'+f.name+'</td><td>'+f.op+'</td><td class="num">'+f.vehicles+'</td><td class="num">'+f.ready+'</td><td class="num">'+(f.missed?'<span style="color:var(--bad);font-weight:700">'+f.missed+'</span>':"0")+'</td><td>'+f.charge+'</td><td class="num">'+f.issues+'</td><td>'+f.contract+'</td><td>'+f.review+'</td></tr>';
+  }).join("");
+}
+
+/* ================= MAINTENANCE ================= */
+function renderTickets(){
+  var s=$("m-status").value, v=$("m-sev").value;
+  var rows=tickets.filter(function(t){return (!s||t.status===s)&&(!v||t.sev===v);});
+  var tb=document.querySelector("#ticketTable tbody");
+  tb.innerHTML=rows.length?rows.map(function(t){
+    var sevPill=t.sev==="Critical"?pillFor("Critical"):t.sev==="High"?'<span class="pill warn">High</span>':t.sev==="Medium"?'<span class="pill warn">Medium</span>':'<span class="pill dim">Low</span>';
+    return '<tr><td><strong>'+t.id+'</strong></td><td>'+t.asset+'</td><td>'+t.issue+'</td><td>'+sevPill+'</td><td>'+t.tech+'</td><td>'+pillFor(t.status)+'</td><td class="num">'+t.down+'</td><td class="num">'+inr(t.cost)+'</td><td class="small muted">'+t.closure+'</td></tr>';
+  }).join(""):'<tr><td colspan="9"><div class="empty">No tickets match these filters.</div></td></tr>';
+}
+["m-status","m-sev"].forEach(function(id){$(id).addEventListener("change",renderTickets);});
+
+/* ================= ANALYTICS ================= */
+function renderCharts(){
+  barChart($("chart-stations"), stations.map(function(s){return [s.id.replace("STN-",""),s.sessions];}), {label:"Sessions by station"});
+  var gateData=GATE_NAMES.map(function(g,i){
+    return [g.split(" ")[0], sites.filter(function(s){return s.gates[i][0]==="clear";}).length];
+  });
+  barChart($("chart-gates"), gateData, {label:"Sites cleared per gate"});
+  var sc=$("chart-stages"); if(sc&&$("view-overview").classList.contains("active")){/* overview charts re-rendered below */}
+  var bs=bookings;
+  barChart($("chart-stages"), STAGES.map(function(s,i){return [s.replace("Verified first charge","First charge"), bs.filter(function(b){return b.stage===i;}).length];}), {label:"Readiness cases by stage"});
+  barChart($("chart-energy"), energyWeek, {label:"Energy delivered last 7 days"});
+}
+$("a-export-stations").addEventListener("click",function(){
+  var rows=[["Station","Sessions (Oct)","Uptime %","Energy kWh"]];stations.forEach(function(s){rows.push([s.id+" "+s.name,s.sessions,s.uptime,s.energy]);});
+  downloadCSV("sessions-by-station.csv",rows);
+});
+$("a-export-gates").addEventListener("click",function(){
+  var rows=[["Gate","Sites cleared"]];GATE_NAMES.forEach(function(g,i){rows.push([g,sites.filter(function(s){return s.gates[i][0]==="clear";}).length]);});
+  downloadCSV("gate-progress.csv",rows);
+});
+document.querySelectorAll("[data-report]").forEach(function(btn){
+  btn.addEventListener("click",function(){
+    var kind=this.getAttribute("data-report");
+    if(kind==="delivery")downloadCSV("charge-ready-delivery-report.csv",[["Booking","Pin","Stage","Status"],].concat(bookings.map(function(b){return [b.id,b.pin,STAGES[b.stage],b.status];})));
+    if(kind==="exceptions")downloadCSV("settlement-exceptions.csv",[["Date","Station","Status","Flag"]].concat(earnings.filter(function(e){return e.status!=="Verified";}).map(function(e){return [e.date,e.station,e.status,e.flag];})));
+    if(kind==="fleet")downloadCSV("fleet-sla-report.csv",[["Depot","Vehicles","Ready","Missed SLA"]].concat(fleets.map(function(f){return [f.name,f.vehicles,f.ready,f.missed];})));
+  });
+});
+
+/* ================= SOURCES / SETTINGS ================= */
+function renderSources(){
+  document.querySelector("#srcTable tbody").innerHTML=sources.map(function(s){
+    return '<tr><td>'+s.claim+'</td><td><span class="tier">'+s.tier+'</span></td><td>'+s.src+'</td><td>'+s.date+'</td><td>'+s.status+'</td></tr>';
+  }).join("");
+}
+$("partnerToggle").addEventListener("change",function(){
+  var el=$("partnerStatus");
+  if(this.checked){el.textContent="Active (demo toggle only — no real partnership implied)";el.className="pill ok";}
+  else{el.textContent="Inactive — no signed partnership";el.className="pill warn";}
+});
+
+/* ================= INIT ================= */
+buildFinInputs();
+fillStationSelects();
+renderOverview(); renderQueue(); selectBooking("BK-1042");
+renderSocieties(); renderSites(); renderStations(); renderFinance();
+renderEarnings(); renderFleet(); renderTickets(); renderSources(); renderCharts();
+showView("overview");
+</script>
+</body>
+</html>
